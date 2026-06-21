@@ -1,4 +1,4 @@
-import type { Activity, City, DayItem, DayPlan, Food } from './types';
+import type { Activity, City, DayItem, DayPlan, Food, Tag } from './types';
 
 const BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -23,11 +23,18 @@ export const api = {
     request<City>(`/cities/${id}`, { method: 'PUT', body: JSON.stringify({ name, color }) }),
   deleteCity: (id: number) => request<void>(`/cities/${id}`, { method: 'DELETE' }),
 
+  getTags: () => request<Tag[]>('/tags'),
+  createTag: (name: string, color: string) =>
+    request<Tag>('/tags', { method: 'POST', body: JSON.stringify({ name, color }) }),
+  updateTag: (id: number, name: string, color: string) =>
+    request<Tag>(`/tags/${id}`, { method: 'PUT', body: JSON.stringify({ name, color }) }),
+  deleteTag: (id: number) => request<void>(`/tags/${id}`, { method: 'DELETE' }),
+
   getActivities: () => request<Activity[]>('/activities'),
-  createActivity: (name: string, notes: string, cityIds: number[]) =>
-    request<Activity>('/activities', { method: 'POST', body: JSON.stringify({ name, notes, cityIds }) }),
-  updateActivity: (id: number, name: string, notes: string, cityIds: number[]) =>
-    request<Activity>(`/activities/${id}`, { method: 'PUT', body: JSON.stringify({ name, notes, cityIds }) }),
+  createActivity: (name: string, notes: string, cityIds: number[], tagIds: number[]) =>
+    request<Activity>('/activities', { method: 'POST', body: JSON.stringify({ name, notes, cityIds, tagIds }) }),
+  updateActivity: (id: number, name: string, notes: string, cityIds: number[], tagIds: number[]) =>
+    request<Activity>(`/activities/${id}`, { method: 'PUT', body: JSON.stringify({ name, notes, cityIds, tagIds }) }),
   deleteActivity: (id: number) => request<void>(`/activities/${id}`, { method: 'DELETE' }),
 
   getFoods: () => request<Food[]>('/foods'),

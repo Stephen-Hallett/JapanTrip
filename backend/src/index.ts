@@ -2,7 +2,15 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { initDb, getCities, createCity, updateCity, deleteCity, getActivities, createActivity, updateActivity, deleteActivity, getFoods, createFood, updateFood, deleteFood, getDayPlans, updateDayCity, updateDayAccommodation, addDayItem, removeDayItem, reorderDayItems } from './db.js';
+import {
+  initDb,
+  getCities, createCity, updateCity, deleteCity,
+  getTags, createTag, updateTag, deleteTag,
+  getActivities, createActivity, updateActivity, deleteActivity,
+  getFoods, createFood, updateFood, deleteFood,
+  getDayPlans, updateDayCity, updateDayAccommodation,
+  addDayItem, removeDayItem, reorderDayItems,
+} from './db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 3001;
@@ -54,23 +62,60 @@ app.delete('/api/cities/:id', (req, res) => {
   res.status(204).send();
 });
 
+app.get('/api/tags', (_req, res) => {
+  res.json(getTags());
+});
+
+app.post('/api/tags', (req, res) => {
+  const { name, color } = req.body;
+  if (!name?.trim()) {
+    res.status(400).json({ error: 'Name is required' });
+    return;
+  }
+  try {
+    res.status(201).json(createTag(name.trim(), color || '#c41e3a'));
+  } catch {
+    res.status(409).json({ error: 'Tag already exists' });
+  }
+});
+
+app.put('/api/tags/:id', (req, res) => {
+  const id = Number(req.params.id);
+  const { name, color } = req.body;
+  const tag = updateTag(id, name?.trim(), color);
+  if (!tag) {
+    res.status(404).json({ error: 'Tag not found' });
+    return;
+  }
+  res.json(tag);
+});
+
+app.delete('/api/tags/:id', (req, res) => {
+  const id = Number(req.params.id);
+  if (!deleteTag(id)) {
+    res.status(404).json({ error: 'Tag not found' });
+    return;
+  }
+  res.status(204).send();
+});
+
 app.get('/api/activities', (_req, res) => {
   res.json(getActivities());
 });
 
 app.post('/api/activities', (req, res) => {
-  const { name, notes, cityIds } = req.body;
+  const { name, notes, cityIds, tagIds } = req.body;
   if (!name?.trim()) {
     res.status(400).json({ error: 'Name is required' });
     return;
   }
-  res.status(201).json(createActivity(name.trim(), notes || '', cityIds || []));
+  res.status(201).json(createActivity(name.trim(), notes || '', cityIds || [], tagIds || []));
 });
 
 app.put('/api/activities/:id', (req, res) => {
   const id = Number(req.params.id);
-  const { name, notes, cityIds } = req.body;
-  const activity = updateActivity(id, name?.trim(), notes || '', cityIds || []);
+  const { name, notes, cityIds, tagIds } = req.body;
+  const activity = updateActivity(id, name?.trim(), notes || '', cityIds || [], tagIds || []);
   if (!activity) {
     res.status(404).json({ error: 'Activity not found' });
     return;

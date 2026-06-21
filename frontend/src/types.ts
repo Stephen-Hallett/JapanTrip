@@ -4,11 +4,18 @@ export interface City {
   color: string;
 }
 
+export interface Tag {
+  id: number;
+  name: string;
+  color: string;
+}
+
 export interface Activity {
   id: number;
   name: string;
   notes: string;
   cityIds: number[];
+  tagIds: number[];
 }
 
 export interface Food {

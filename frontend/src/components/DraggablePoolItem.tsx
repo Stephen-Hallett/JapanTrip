@@ -1,5 +1,5 @@
 import { useDraggable } from '@dnd-kit/core';
-import type { DragItem } from '../types';
+import type { DragItem, Tag } from '../types';
 
 interface Props {
   type: 'activity' | 'food';
@@ -7,19 +7,25 @@ interface Props {
   name: string;
   subtitle?: string;
   notes?: string;
+  cityColor?: string;
+  tags?: Tag[];
   onDelete: () => void;
 }
 
-export function DraggablePoolItem({ type, id, name, subtitle, notes, onDelete }: Props) {
+export function DraggablePoolItem({ type, id, name, subtitle, notes, cityColor, tags, onDelete }: Props) {
   const dragData: DragItem = { type, id, name, source: 'pool' };
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `pool-${type}-${id}`,
     data: dragData,
   });
 
-  const style = transform
-    ? { transform: `translate(${transform.x}px, ${transform.y}px)`, opacity: isDragging ? 0.5 : 1 }
-    : undefined;
+  const fallbackColor = type === 'activity' ? 'var(--accent)' : 'var(--gold)';
+
+  const style = {
+    ...(transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : {}),
+    opacity: isDragging ? 0.4 : 1,
+    borderLeftColor: cityColor ?? fallbackColor,
+  };
 
   return (
     <div
@@ -34,6 +40,19 @@ export function DraggablePoolItem({ type, id, name, subtitle, notes, onDelete }:
         <strong>{name}</strong>
         {subtitle && <span className="pool-item-sub">{subtitle}</span>}
         {notes && <span className="pool-item-notes">{notes}</span>}
+        {tags && tags.length > 0 && (
+          <div className="pool-item-tags">
+            {tags.map((tag) => (
+              <span
+                key={tag.id}
+                className="pool-tag-chip"
+                style={{ background: tag.color + '22', borderColor: tag.color, color: tag.color }}
+              >
+                {tag.name}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
       <button
         type="button"

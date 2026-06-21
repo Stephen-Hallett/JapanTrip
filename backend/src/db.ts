@@ -63,6 +63,7 @@ export function initDb() {
   `);
 
   migrateDayPlansColumns();
+  migrateTagsTables();
 
   const cityCount = db.prepare('SELECT COUNT(*) as count FROM cities').get() as { count: number };
   if (cityCount.count === 0) {
@@ -104,11 +105,18 @@ export interface City {
   color: string;
 }
 
+export interface Tag {
+  id: number;
+  name: string;
+  color: string;
+}
+
 export interface Activity {
   id: number;
   name: string;
   notes: string;
   cityIds: number[];
+  tagIds: number[];
 }
 
 export interface Food {
@@ -148,11 +156,34 @@ function migrateDayPlansColumns() {
   }
 }
 
+function migrateTagsTables() {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS tags (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      color TEXT NOT NULL DEFAULT '#c41e3a'
+    );
+
+    CREATE TABLE IF NOT EXISTS activity_tags (
+      activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+      tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+      PRIMARY KEY (activity_id, tag_id)
+    );
+  `);
+}
+
 function getCityIds(table: 'activity_cities' | 'food_cities', itemCol: string, itemId: number): number[] {
   const rows = db
     .prepare(`SELECT city_id FROM ${table} WHERE ${itemCol} = ?`)
     .all(itemId) as { city_id: number }[];
   return rows.map((r) => r.city_id);
+}
+
+function getTagIds(activityId: number): number[] {
+  const rows = db
+    .prepare('SELECT tag_id FROM activity_tags WHERE activity_id = ?')
+    .all(activityId) as { tag_id: number }[];
+  return rows.map((r) => r.tag_id);
 }
 
 export function getCities(): City[] {
@@ -175,26 +206,54 @@ export function deleteCity(id: number): boolean {
   return result.changes > 0;
 }
 
+export function getTags(): Tag[] {
+  return db.prepare('SELECT id, name, color FROM tags ORDER BY name').all() as Tag[];
+}
+
+export function createTag(name: string, color: string): Tag {
+  const result = db.prepare('INSERT INTO tags (name, color) VALUES (?, ?)').run(name, color);
+  return { id: Number(result.lastInsertRowid), name, color };
+}
+
+export function updateTag(id: number, name: string, color: string): Tag | null {
+  const result = db.prepare('UPDATE tags SET name = ?, color = ? WHERE id = ?').run(name, color, id);
+  if (result.changes === 0) return null;
+  return { id, name, color };
+}
+
+export function deleteTag(id: number): boolean {
+  const result = db.prepare('DELETE FROM tags WHERE id = ?').run(id);
+  return result.changes > 0;
+}
+
 export function getActivities(): Activity[] {
   const rows = db.prepare('SELECT id, name, notes FROM activities ORDER BY name').all() as {
     id: number;
     name: string;
     notes: string;
   }[];
-  return rows.map((r) => ({ ...r, cityIds: getCityIds('activity_cities', 'activity_id', r.id) }));
+  return rows.map((r) => ({
+    ...r,
+    cityIds: getCityIds('activity_cities', 'activity_id', r.id),
+    tagIds: getTagIds(r.id),
+  }));
 }
 
-export function createActivity(name: string, notes: string, cityIds: number[]): Activity {
+export function createActivity(name: string, notes: string, cityIds: number[], tagIds: number[]): Activity {
   const result = db.prepare('INSERT INTO activities (name, notes) VALUES (?, ?)').run(name, notes);
   const id = Number(result.lastInsertRowid);
   const insertCity = db.prepare('INSERT INTO activity_cities (activity_id, city_id) VALUES (?, ?)');
   for (const cityId of cityIds) {
     insertCity.run(id, cityId);
   }
-  return { id, name, notes, cityIds };
+  const insertTag = db.prepare('INSERT OR IGNORE INTO activity_tags (activity_id, tag_id) VALUES (?, ?)');
+  for (const tagId of tagIds) {
+    insertTag.run(id, tagId);
+  }
+  return { id, name, notes, cityIds, tagIds };
 }
 
-export function updateActivity(id: number, name: string, notes: string, cityIds: number[]): Activity | null {
+export function updateActivity(id: number, name: string, notes: string, cityIds: number[], tagIds: number[]): Activity | null {
   const result = db.prepare('UPDATE activities SET name = ?, notes = ? WHERE id = ?').run(name, notes, id);
   if (result.changes === 0) return null;
   db.prepare('DELETE FROM activity_cities WHERE activity_id = ?').run(id);
@@ -202,7 +261,12 @@ export function updateActivity(id: number, name: string, notes: string, cityIds:
   for (const cityId of cityIds) {
     insertCity.run(id, cityId);
   }
-  return { id, name, notes, cityIds };
+  db.prepare('DELETE FROM activity_tags WHERE activity_id = ?').run(id);
+  const insertTag = db.prepare('INSERT OR IGNORE INTO activity_tags (activity_id, tag_id) VALUES (?, ?)');
+  for (const tagId of tagIds) {
+    insertTag.run(id, tagId);
+  }
+  return { id, name, notes, cityIds, tagIds };
 }
 
 export function deleteActivity(id: number): boolean {

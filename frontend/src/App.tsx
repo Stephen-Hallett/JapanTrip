@@ -21,7 +21,7 @@ import type { DragItem } from "./types";
 import "./App.css";
 
 function App() {
-  const { cities, activities, foods, days, loading, error, refresh } =
+  const { cities, tags, activities, foods, days, loading, error, refresh } =
     usePlannerData();
   const [activeDrag, setActiveDrag] = useState<DragItem | null>(null);
 
@@ -116,6 +116,7 @@ function App() {
             <ActivityPanel
               activities={activities}
               cities={cities}
+              tags={tags}
               onUpdate={refresh}
             />
             <FoodPanel foods={foods} cities={cities} onUpdate={refresh} />

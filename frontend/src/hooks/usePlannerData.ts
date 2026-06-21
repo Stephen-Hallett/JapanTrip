@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api';
-import type { Activity, City, DayPlan, Food } from '../types';
+import type { Activity, City, DayPlan, Food, Tag } from '../types';
 
 export function usePlannerData() {
   const [cities, setCities] = useState<City[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [foods, setFoods] = useState<Food[]>([]);
   const [days, setDays] = useState<DayPlan[]>([]);
@@ -13,13 +14,15 @@ export function usePlannerData() {
   const refresh = useCallback(async () => {
     try {
       setError(null);
-      const [c, a, f, d] = await Promise.all([
+      const [c, t, a, f, d] = await Promise.all([
         api.getCities(),
+        api.getTags(),
         api.getActivities(),
         api.getFoods(),
         api.getDays(),
       ]);
       setCities(c);
+      setTags(t);
       setActivities(a);
       setFoods(f);
       setDays(d);
@@ -36,6 +39,7 @@ export function usePlannerData() {
 
   return {
     cities,
+    tags,
     activities,
     foods,
     days,
@@ -43,6 +47,7 @@ export function usePlannerData() {
     error,
     refresh,
     setCities,
+    setTags,
     setActivities,
     setFoods,
     setDays,
